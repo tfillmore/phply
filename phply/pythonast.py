@@ -441,7 +441,31 @@ def from_phpast(node):
 
     if isinstance(node, (php.FunctionCall, php.New)):
         if isinstance(node.name, basestring):
-            name = py.Name(node.name, py.Load(**pos(node)), **pos(node))
+            if node.name == 'substr':
+                args, kwargs = build_args(node.params)
+                sliceobj = args[0]
+                lower = args[1]
+                if len(args) > 2:
+                    # PHP uses length instead of upper value, so
+                    # insert op to add length to lower value
+                    length = args[2]
+                    upper = py.BinOp(left=lower, op=py.Add(), right=length)
+                else:
+                    upper = None
+                return py.Expr(
+                    value=py.Subscript(value=sliceobj,
+                                       slice=py.Slice(lower=lower, upper=upper, step=None),
+                                       ctx=py.Load()))
+            elif node.name == 'boolval':
+                name = py.Name('bool', py.Load(**pos(node)), **pos(node))
+            elif node.name == 'floatval':
+                name = py.Name('float', py.Load(**pos(node)), **pos(node))
+            elif node.name == 'intval':
+                name = py.Name('int', py.Load(**pos(node)), **pos(node))
+            elif node.name == 'strval':
+                name = py.Name('str', py.Load(**pos(node)), **pos(node))
+            else:
+                name = py.Name(node.name, py.Load(**pos(node)), **pos(node))
         else:
             name = py.Subscript(py.Call(py.Name('vars', py.Load(**pos(node)),
                                                 **pos(node)),
